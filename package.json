@@ -1,0 +1,45 @@
+{
+  "name": "osint-studio",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Open-source OSINT investigation tool with graph visualization, confidence scoring, and automated reporting",
+  "author": "OSINT Studio Development Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sooox-cc/osint-studio"
+  },
+  "keywords": ["osint", "intelligence", "investigation", "graph", "visualization", "desktop-app", "tauri"],
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-fs": "^2",
+    "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-shell": "^2",
+    "cytoscape": "^3.26.0",
+    "cytoscape-dagre": "^2.5.0",
+    "cytoscape-cose-bilkent": "^4.1.0",
+    "lucide-react": "^0.263.1",
+    "@monaco-editor/react": "^4.6.0",
+    "react-markdown": "^9.0.1",
+    "remark-gfm": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@types/cytoscape": "^3.19.9",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3",
+    "@tauri-apps/cli": "^2"
+  }
+}

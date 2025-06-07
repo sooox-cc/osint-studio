@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/*
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+
+# Tauri specific
+src-tauri/target/
+src-tauri/WixTools/
+
+# OSINT Studio user data
+src-tauri/attachments/
+*.osint-project
+*.osint
+
+# Editor directories and files
+.vscode/*
