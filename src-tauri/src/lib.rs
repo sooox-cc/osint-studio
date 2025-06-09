@@ -1,3 +1,53 @@
+//! # OSINT Studio Library
+//!
+//! This is the core library for OSINT Studio, an open-source intelligence investigation tool
+//! that provides graph visualization, confidence scoring, and automated reporting capabilities.
+//!
+//! ## Overview
+//!
+//! OSINT Studio allows investigators to:
+//! - Create and manage investigation nodes (people, organizations, crypto wallets, etc.)
+//! - Establish relationships between entities with confidence scoring
+//! - Visualize data as interactive graphs
+//! - Export findings in multiple formats (CSV, GraphML, JSON)
+//! - Generate investigation reports
+//! - Manage file attachments for evidence
+//!
+//! ## Architecture
+//!
+//! The application is built using:
+//! - **Tauri**: Cross-platform desktop application framework
+//! - **In-memory database**: Fast data storage using HashMap and Vec collections
+//! - **Graph data model**: Nodes and relationships for entity mapping
+//! - **Multiple export formats**: CSV, GraphML, and JSON support
+//!
+//! ## Node Types
+//!
+//! Supported entity types include:
+//! - Person
+//! - Organization
+//! - CryptoWallet
+//! - SocialAccount
+//! - Domain
+//! - IpAddress
+//! - Email
+//! - Phone
+//! - Document
+//! - Event
+//!
+//! ## Relationship Types
+//!
+//! Supported relationship types include:
+//! - Owns
+//! - Controls
+//! - TransactsWith
+//! - MemberOf
+//! - ConnectedTo
+//! - SameAs
+//! - RelatedTo
+//! - ParentOf
+//! - ChildOf
+
 mod entities;
 mod database;
 
@@ -8,69 +58,123 @@ use tauri::State;
 use uuid::Uuid;
 use base64::prelude::*;
 
+/// Shared application state containing the database instance
 type AppState = Arc<Database>;
 
+/// Project data structure for serialization/deserialization
+/// 
+/// Used when saving and loading complete investigation projects
 #[derive(serde::Serialize, serde::Deserialize)]
 struct ProjectData {
+    /// All nodes in the project
     nodes: Vec<Node>,
+    /// All relationships in the project
     relationships: Vec<Relationship>,
+    /// Project metadata and information
     metadata: ProjectMetadata,
 }
 
+/// Metadata for investigation projects
 #[derive(serde::Serialize, serde::Deserialize)]
 struct ProjectMetadata {
+    /// Project name
     name: String,
+    /// ISO 8601 timestamp of creation
     created_at: String,
+    /// ISO 8601 timestamp of last update
     updated_at: String,
+    /// Project format version
     version: String,
 }
 
+/// File attachment data structure
+/// 
+/// Represents evidence files attached to investigation nodes
 #[derive(serde::Serialize, serde::Deserialize)]
 struct AttachmentData {
+    /// Unique attachment identifier
     id: String,
+    /// ID of the node this attachment belongs to
     node_id: String,
+    /// Original filename
     filename: String,
+    /// File type/extension
     file_type: String,
+    /// Base64-encoded file content
     content_base64: String,
 }
 
+/// Request structure for creating new nodes
 #[derive(serde::Serialize, serde::Deserialize)]
 struct CreateNodeRequest {
+    /// Type of node to create (Person, Organization, etc.)
     node_type: String,
+    /// Display label for the node
     label: String,
+    /// Optional description
     description: Option<String>,
+    /// Tags for categorization
     tags: Vec<String>,
 }
 
+/// Request structure for updating existing nodes
 #[derive(serde::Serialize, serde::Deserialize)]
 struct UpdateNodeRequest {
+    /// Node ID to update
     id: String,
+    /// New label
     label: String,
+    /// New description
     description: Option<String>,
+    /// New tags
     tags: Vec<String>,
+    /// Confidence score (0.0 to 1.0)
     confidence: f64,
 }
 
+/// Request structure for creating relationships between nodes
 #[derive(serde::Serialize, serde::Deserialize)]
 struct CreateRelationshipRequest {
+    /// Source node ID
     source_id: String,
+    /// Target node ID
     target_id: String,
+    /// Type of relationship
     relation_type: String,
+    /// Optional description
     description: Option<String>,
+    /// Optional confidence score (0.0 to 1.0)
     confidence: Option<f32>,
+    /// Optional data source reference
     source: Option<String>,
 }
 
+/// Request structure for updating existing relationships
 #[derive(serde::Serialize, serde::Deserialize)]
 struct UpdateRelationshipRequest {
+    /// Relationship ID to update
     id: String,
+    /// New relationship type
     relation_type: String,
+    /// New description
     description: Option<String>,
+    /// New weight value
     weight: f64,
+    /// New confidence score
     confidence: Option<f32>,
+    /// New source reference
     source: Option<String>,
 }
 
+/// Creates a new investigation node
+///
+/// # Arguments
+/// * `state` - Application state containing the database
+/// * `request` - Node creation request with type, label, description, and tags
+///
+/// # Returns
+/// * `Ok(String)` - The UUID of the created node
+/// * `Err(String)` - Error message if creation fails
 #[tauri::command]
 fn create_node(state: State<AppState>, request: CreateNodeRequest) -> Result<String, String> {
     let node_type = match request.node_type.as_str() {
@@ -103,11 +207,30 @@ fn create_node(state: State<AppState>, request: CreateNodeRequest) -> Result<Str
     }
 }
 
+/// Retrieves all nodes from the database
+///
+/// # Arguments
+/// * `state` - Application state containing the database
+///
+/// # Returns
+/// * `Ok(Vec<Node>)` - All nodes in the database
+/// * `Err(String)` - Error message if retrieval fails
 #[tauri::command]
 fn get_all_nodes(state: State<AppState>) -> Result<Vec<Node>, String> {
     state.get_all_nodes().map_err(|e| e.to_string())
 }
 
+/// Searches for nodes matching a query string
+///
+/// Searches in node labels, descriptions, and tags (case-insensitive)
+///
+/// # Arguments
+/// * `state` - Application state containing the database
+/// * `query` - Search query string
+///
+/// # Returns
+/// * `Ok(Vec<Node>)` - Nodes matching the search query
+/// * `Err(String)` - Error message if search fails
 #[tauri::command]
 fn search_nodes(state: State<AppState>, query: String) -> Result<Vec<Node>, String> {
     state.search_nodes(&query).map_err(|e| e.to_string())
@@ -235,6 +358,18 @@ fn delete_relationship(state: State<AppState>, id: String) -> Result<bool, Strin
     state.delete_relationship(uuid).map_err(|e| e.to_string())
 }
 
+/// Saves the current investigation project to a JSON file
+///
+/// Exports all nodes, relationships, and metadata to a JSON file
+///
+/// # Arguments
+/// * `state` - Application state containing the database
+/// * `file_path` - Path where to save the project file
+/// * `project_name` - Name of the project
+///
+/// # Returns
+/// * `Ok(())` - Success
+/// * `Err(String)` - Error message if save fails
 #[tauri::command]
 fn save_project(state: State<AppState>, file_path: String, project_name: String) -> Result<(), String> {
     let nodes = state.get_all_nodes().map_err(|e| e.to_string())?;
@@ -257,6 +392,17 @@ fn save_project(state: State<AppState>, file_path: String, project_name: String)
     Ok(())
 }
 
+/// Loads an investigation project from a JSON file
+///
+/// Clears current data and loads nodes and relationships from file
+///
+/// # Arguments
+/// * `state` - Application state containing the database
+/// * `file_path` - Path to the project file to load
+///
+/// # Returns
+/// * `Ok(ProjectMetadata)` - Loaded project metadata
+/// * `Err(String)` - Error message if load fails
 #[tauri::command]
 fn load_project(state: State<AppState>, file_path: String) -> Result<ProjectMetadata, String> {
     let json_data = std::fs::read_to_string(&file_path).map_err(|e| e.to_string())?;
@@ -278,6 +424,17 @@ fn load_project(state: State<AppState>, file_path: String) -> Result<ProjectMeta
     Ok(project_data.metadata)
 }
 
+/// Exports investigation data to CSV format
+///
+/// Creates a CSV file with separate sections for nodes and relationships
+///
+/// # Arguments
+/// * `state` - Application state containing the database
+/// * `file_path` - Path where to save the CSV file
+///
+/// # Returns
+/// * `Ok(())` - Success
+/// * `Err(String)` - Error message if export fails
 #[tauri::command]
 fn export_csv(state: State<AppState>, file_path: String) -> Result<(), String> {
     let nodes = state.get_all_nodes().map_err(|e| e.to_string())?;
@@ -323,6 +480,17 @@ fn export_csv(state: State<AppState>, file_path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Exports investigation data to GraphML format
+///
+/// Creates a GraphML file compatible with graph analysis tools like Gephi
+///
+/// # Arguments
+/// * `state` - Application state containing the database
+/// * `file_path` - Path where to save the GraphML file
+///
+/// # Returns
+/// * `Ok(())` - Success
+/// * `Err(String)` - Error message if export fails
 #[tauri::command]
 fn export_graphml(state: State<AppState>, file_path: String) -> Result<(), String> {
     let nodes = state.get_all_nodes().map_err(|e| e.to_string())?;
@@ -485,6 +653,15 @@ fn clear_all_data(state: State<AppState>) -> Result<(), String> {
     state.clear_all().map_err(|e| e.to_string())
 }
 
+/// Main entry point for the OSINT Studio application
+///
+/// Initializes the Tauri application with:
+/// - Database state management
+/// - Plugin registrations (opener, fs, dialog, shell)
+/// - All command handlers for frontend communication
+///
+/// This function sets up the complete application runtime and should be called
+/// from the main.rs entry point.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let database = Arc::new(Database::new());
